@@ -59,6 +59,7 @@ export default function MapView() {
   const [filterPriority, setFilterPriority] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [nearbyCount, setNearbyCount] = useState(0);
+  const [showSentiment, setShowSentiment] = useState(false);
 
   // Default map theme follows the app's light/dark mode on first visit, but a saved choice always wins
   const [mapTheme, setMapTheme] = useState(() => {
@@ -128,10 +129,23 @@ export default function MapView() {
 
     filtered.forEach((c) => {
       const [lng, lat] = c.location.coordinates;
-      const color = PRIORITY_COLORS_MAP[c.priority] || '#666';
+      let color = PRIORITY_COLORS_MAP[c.priority] || '#666';
+      let isAngry = c.sentimentLabel === 'highly_frustrated' || c.sentimentLabel === 'frustrated';
+      let html = '';
+      
+      if (showSentiment) {
+        const score = c.sentimentScore !== undefined ? c.sentimentScore : 0.5;
+        const hue = Math.max(0, Math.min(120, score * 120));
+        color = `hsl(${hue}, 80%, 50%)`;
+        const pulse = isAngry ? 'animation:pulse 1.5s infinite;' : '';
+        html = `<div style="width:20px;height:20px;border-radius:50%;background:${color};border:2px solid white;box-shadow:0 0 10px ${color};${pulse}"></div>`;
+      } else {
+        html = `<div style="width:16px;height:16px;border-radius:50%;background:${color};border:2px solid white;box-shadow:0 2px 4px rgba(0,0,0,0.3);${c.isCritical ? 'animation:pulse 1.5s infinite;' : ''}"></div>`;
+      }
+
       const icon = L.divIcon({
-        html: `<div style="width:16px;height:16px;border-radius:50%;background:${color};border:2px solid white;box-shadow:0 2px 4px rgba(0,0,0,0.3);${c.isCritical ? 'animation:pulse 1.5s infinite;' : ''}"></div>`,
-        className: '', iconSize: [16, 16], iconAnchor: [8, 8]
+        html,
+        className: '', iconSize: showSentiment ? [20, 20] : [16, 16], iconAnchor: showSentiment ? [10, 10] : [8, 8]
       });
 
       const marker = L.marker([lat, lng], { icon }).addTo(leafletMap.current).bindPopup(`
@@ -148,7 +162,7 @@ export default function MapView() {
       `);
       markersRef.current.push(marker);
     });
-  }, [filtered]);
+  }, [filtered, showSentiment]);
 
   useEffect(() => () => { leafletMap.current?.remove(); leafletMap.current = null; tileLayerRef.current = null; }, []);
 
@@ -196,6 +210,10 @@ export default function MapView() {
               <option value="in_progress">In Progress</option>
               <option value="resolved">Resolved</option>
             </select>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: '0 12px', background: showSentiment ? '#fef2f2' : 'var(--background)', color: showSentiment ? '#dc2626' : 'var(--text)', borderRadius: 8, border: `1px solid ${showSentiment ? '#fca5a5' : 'var(--border)'}` }}>
+              <input type="checkbox" checked={showSentiment} onChange={(e) => setShowSentiment(e.target.checked)} style={{ cursor: 'pointer' }} />
+              😡 Anger Heatmap
+            </label>
           </div>
 
           <div className="map-theme-switcher">

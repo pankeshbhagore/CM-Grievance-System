@@ -59,6 +59,12 @@ router.get('/ai/anomalies', protect, authorize('cm', 'super_admin'), async (req,
   res.json({ success: true, officerAnomalies, departmentBottlenecks });
 });
 
+// ---------- Reports & AI Generation ----------
+router.get('/reports/press-release', protect, authorize('cm', 'super_admin', 'department_head'), require('../controllers/reportController').generatePressRelease);
+
+// ---------- Bot Integrations ----------
+router.post('/webhook/whatsapp', require('../controllers/whatsappController').handleWebhook);
+
 // ---------- Departments ----------
 router.get('/departments', protect, userCtrl.getDepartments);
 router.post('/departments', protect, authorize('super_admin'), userCtrl.createDepartment);

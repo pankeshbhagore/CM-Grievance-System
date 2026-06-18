@@ -2,6 +2,8 @@ const Complaint = require('../models/Complaint');
 const Department = require('../models/Department');
 const User = require('../models/User');
 const AuditLog = require('../models/AuditLog');
+const { getCachedData, setCachedData, invalidateCachePattern } = require('../services/redisService');
+const { processImageForFraud } = require('../services/imageFraudService');
 const { classifyComplaint, detectDuplicate, calculateSLA } = require('../services/aiClassification');
 const { syncComplaintToMCD311 } = require('../services/mcd311');
 const { notify, notifyMany } = require('../services/notificationService');
@@ -15,13 +17,15 @@ exports.submitComplaint = asyncHandler(async (req, res) => {
   const ai = classifyComplaint(title, description);
   const dept = await Department.findOne({ complaintCategories: ai.category, isActive: true });
 
-  let location;
+  let location = { type: 'Point', coordinates: [77.2090, 28.6139] }; // Fallback
   if (coordinates) {
     try {
       const parsed = JSON.parse(coordinates);
-      if (Array.isArray(parsed) && parsed.length === 2) location = { type: 'Point', coordinates: parsed };
+      if (Array.isArray(parsed) && parsed.length === 2) {
+        location = { type: 'Point', coordinates: parsed };
+      }
     } catch {
-      // invalid coordinates payload — proceed without location rather than failing the whole submission
+      // invalid coordinates payload — proceed with fallback location
     }
   }
 
@@ -86,6 +90,51 @@ exports.submitComplaint = asyncHandler(async (req, res) => {
       complaintId: complaint._id
     });
   }
+
+  // --- Skill-based Auto Assignment ---
+  if (dept) {
+    const availableOfficers = await User.find({
+      department: dept._id,
+      role: 'employee',
+      isActive: true,
+      $expr: { $lt: ['$activeComplaints', '$bandwidth'] }
+    });
+
+    if (availableOfficers.length > 0) {
+      let bestOfficer = null;
+      let bestScore = Infinity;
+
+      for (const officer of availableOfficers) {
+        const catStats = officer.stats.categorySkills?.get(ai.category);
+        const speedScore = catStats?.avgResolutionHours || officer.stats.avgResolutionHours || 24;
+        const loadFactor = 1 + (officer.activeComplaints / officer.bandwidth); 
+        const finalScore = speedScore * loadFactor;
+
+        if (finalScore < bestScore) {
+          bestScore = finalScore;
+          bestOfficer = officer;
+        }
+      }
+
+      if (bestOfficer) {
+        await User.findByIdAndUpdate(bestOfficer._id, { $inc: { activeComplaints: 1, 'stats.totalAssigned': 1 } });
+        complaint.assignedTo = bestOfficer._id;
+        complaint.assignedAt = new Date();
+        complaint.status = 'assigned';
+        complaint.timeline.push({ status: 'assigned', message: `Auto-assigned to ${bestOfficer.name} based on skill metrics`, isAutomatic: true, updatedBy: null });
+        
+        await notify(req.io, {
+          recipientId: bestOfficer._id,
+          type: 'new_assignment',
+          title: 'New Complaint Auto-Assigned',
+          message: `${complaint.ticketId}: ${complaint.title}`,
+          complaintId: complaint._id
+        });
+      }
+    }
+  }
+
+  await complaint.save();
 
   // Real-time + persisted notifications to CM/admins for critical complaints
   if (complaint.isCritical) {
@@ -253,7 +302,7 @@ exports.assignComplaint = asyncHandler(async (req, res) => {
 
 // ---- Update status (officer/admin) ----
 exports.updateStatus = asyncHandler(async (req, res) => {
-  const { status, note, resolutionNote } = req.body;
+  const { status, note, resolutionNote, latitude, longitude } = req.body;
   if (!status) throw new AppError('status is required', 400);
 
   const VALID_STATUSES = ['under_review', 'in_progress', 'pending_verification', 'escalated', 'rejected'];
@@ -262,6 +311,13 @@ exports.updateStatus = asyncHandler(async (req, res) => {
   const images = req.files?.map((f) => `/uploads/${f.filename}`) || [];
   const complaint = await Complaint.findById(req.params.id);
   if (!complaint) throw new AppError('Complaint not found', 404);
+
+  // Run Fraud Detection on uploaded images
+  const proofImageHashes = [];
+  for (const imgPath of images) {
+    const { hash } = await processImageForFraud(imgPath, complaint._id, req.user._id, req.io);
+    if (hash) proofImageHashes.push(hash);
+  }
 
   if (complaint.assignedTo?.toString() !== req.user._id.toString()) {
     throw new AppError('Only the assigned officer can update the operational status', 403);
@@ -280,7 +336,45 @@ exports.updateStatus = asyncHandler(async (req, res) => {
     complaint.status = 'pending_verification';
     complaint.resolutionNote = resolutionNote;
     complaint.resolutionImages.push(...images);
-    complaint.verification = { requestedAt: new Date(), citizenConfirmed: null };
+    
+    const existingHashes = complaint.verification?.proofImageHashes || [];
+    complaint.verification = { 
+      requestedAt: new Date(), 
+      citizenConfirmed: null, 
+      proofImageHashes: [...existingHashes, ...proofImageHashes] 
+    };
+
+    // Geo-fence SLA Tracking (Contractor Accountability)
+    if (latitude && longitude && complaint.location && complaint.location.coordinates) {
+      const [cLng, cLat] = complaint.location.coordinates;
+      const R = 6371e3; // Earth radius in meters
+      const rad = Math.PI / 180;
+      const dLat = (latitude - cLat) * rad;
+      const dLng = (longitude - cLng) * rad;
+      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(cLat * rad) * Math.cos(latitude * rad) *
+                Math.sin(dLng/2) * Math.sin(dLng/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      const distanceMeters = R * c;
+
+      if (distanceMeters > 300) { // 300 meters threshold
+        await AuditLog.create({
+          action: 'GEO_FENCE_VIOLATION',
+          entityType: 'complaint',
+          entityId: complaint._id,
+          performedBy: req.user._id,
+          suspicious: true,
+          suspicionReason: `Officer resolved complaint from ${Math.round(distanceMeters)}m away.`,
+          details: { distanceMeters, officerLat: latitude, officerLng: longitude }
+        });
+        
+        req.io?.emit('false_closure_alert', {
+          complaint: { id: complaint._id, ticketId: complaint.ticketId, title: complaint.title },
+          officerId: req.user._id,
+          reason: `Resolution submitted from ${Math.round(distanceMeters)}m away (Geo-fence violation)`
+        });
+      }
+    }
 
     await notify(req.io, {
       recipientId: complaint.citizen,
@@ -337,7 +431,7 @@ exports.citizenVerify = asyncHandler(async (req, res) => {
         officer.stats.totalResolved += 1;
         await officer.save({ validateBeforeSave: false });
         await officer.addRating(rating);
-        await officer.addResolutionTime(complaint.resolutionTimeHours);
+        await officer.addResolutionTime(complaint.resolutionTimeHours, complaint.category);
       }
     }
     if (complaint.department) {
@@ -425,6 +519,12 @@ exports.getDashboardStats = asyncHandler(async (req, res) => {
   const { days } = req.query;
   const hasRange = days !== undefined && days !== '';
   const numDays = hasRange ? parseInt(days, 10) : null;
+  const cacheKey = `dashboardStats:${hasRange ? numDays : 'all'}`;
+
+  const cachedStats = await getCachedData(cacheKey);
+  if (cachedStats) {
+    return res.json({ success: true, stats: cachedStats, cached: true });
+  }
 
   // days=0 -> since midnight today; days=N -> last N days; omitted/empty -> all time
   let rangeFilter = {};
@@ -465,14 +565,20 @@ exports.getDashboardStats = asyncHandler(async (req, res) => {
   const critical = priorityCounts.find((p) => p._id === 'critical')?.count || 0;
   const pending = statusCounts.filter((s) => !['resolved', 'rejected'].includes(s._id)).reduce((a, b) => a + b.count, 0);
 
+  const stats = {
+    total, resolved, critical, pending,
+    resolutionRate: total > 0 ? ((resolved / total) * 100).toFixed(1) : '0',
+    falseClosures, overdueCount,
+    statusCounts, categoryCounts, priorityCounts, recentCritical, topDepts, trend,
+    rangeDays: hasRange ? numDays : null
+  };
+
+  // Cache for 5 minutes
+  await setCachedData(cacheKey, stats, 300);
+
   res.json({
     success: true,
-    stats: {
-      total, resolved, critical, pending,
-      resolutionRate: total > 0 ? ((resolved / total) * 100).toFixed(1) : '0',
-      falseClosures, overdueCount,
-      statusCounts, categoryCounts, priorityCounts, recentCritical, topDepts, trend,
-      rangeDays: hasRange ? numDays : null
-    }
+    stats,
+    cached: false
   });
 });

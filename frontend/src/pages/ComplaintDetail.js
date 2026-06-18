@@ -79,8 +79,27 @@ export default function ComplaintDetail() {
   const handleStatusUpdate = async () => {
     if (!newStatus) return toast.error('Select a status');
     setActionLoading(true);
+
+    let latitude = null;
+    let longitude = null;
+
+    // Geo-fence SLA tracking
+    if (newStatus === 'pending_verification') {
+      if (navigator.geolocation) {
+        try {
+          const position = await new Promise((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000 });
+          });
+          latitude = position.coords.latitude;
+          longitude = position.coords.longitude;
+        } catch (err) {
+          toast.warning('Could not capture location. Geo-fence SLA tracking will flag this.');
+        }
+      }
+    }
+
     try {
-      await updateComplaintStatus(id, { status: newStatus, note: statusNote });
+      await updateComplaintStatus(id, { status: newStatus, note: statusNote, latitude, longitude });
       toast.success('Status updated');
       setShowStatus(false);
       setNewStatus('');

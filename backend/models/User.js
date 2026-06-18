@@ -36,7 +36,16 @@ const userSchema = new mongoose.Schema({
     falseClosures: { type: Number, default: 0 },
     totalRatings: { type: Number, default: 0 },
     sumRatings: { type: Number, default: 0 },
-    avgSatisfactionScore: { type: Number, default: 0 }
+    avgSatisfactionScore: { type: Number, default: 0 },
+    categorySkills: {
+      type: Map,
+      of: new mongoose.Schema({
+        totalResolved: { type: Number, default: 0 },
+        sumResolutionHours: { type: Number, default: 0 },
+        avgResolutionHours: { type: Number, default: 0 }
+      }, { _id: false }),
+      default: {}
+    }
   },
 
   passwordChangedAt: Date,
@@ -74,9 +83,21 @@ userSchema.methods.addRating = async function (rating) {
   await this.save({ validateBeforeSave: false });
 };
 
-userSchema.methods.addResolutionTime = async function (hours) {
+userSchema.methods.addResolutionTime = async function (hours, category) {
   this.stats.sumResolutionHours += hours;
   this.stats.avgResolutionHours = parseFloat((this.stats.sumResolutionHours / Math.max(this.stats.totalResolved, 1)).toFixed(1));
+  
+  if (category) {
+    if (!this.stats.categorySkills) {
+      this.stats.categorySkills = new Map();
+    }
+    const catStats = this.stats.categorySkills.get(category) || { totalResolved: 0, sumResolutionHours: 0, avgResolutionHours: 0 };
+    catStats.totalResolved += 1;
+    catStats.sumResolutionHours += hours;
+    catStats.avgResolutionHours = parseFloat((catStats.sumResolutionHours / catStats.totalResolved).toFixed(1));
+    this.stats.categorySkills.set(category, catStats);
+  }
+
   await this.save({ validateBeforeSave: false });
 };
 

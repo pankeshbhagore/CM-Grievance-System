@@ -4,8 +4,9 @@ import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, Cart
 import { getDashboardStats, getComplaints, getAiAnomalies } from '../services/api';
 import { formatCategory, formatStatus, DATE_RANGE_PRESETS } from '../utils/helpers';
 import { SkeletonStatsGrid } from '../components/shared/Skeletons';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, FileText, CheckCircle, X } from 'lucide-react';
 import { format } from 'date-fns';
+import toast from 'react-hot-toast';
 
 const COLORS = ['#1a3a6b', '#ff6b35', '#16a34a', '#d97706', '#7c3aed', '#0891b2', '#db2777', '#65a30d'];
 
@@ -32,6 +33,26 @@ export default function CMDashboard() {
 
   useEffect(() => { fetchStats(); }, [fetchStats]);
 
+  const [prLoading, setPrLoading] = useState(false);
+  const [prReport, setPrReport] = useState(null);
+
+  const handleGeneratePR = async () => {
+    setPrLoading(true);
+    try {
+      const { generatePressRelease } = require('../services/api');
+      const { data } = await generatePressRelease();
+      if (data.success) {
+        setPrReport(data.report);
+      } else {
+        toast.error(data.report || 'Failed to generate PR');
+      }
+    } catch (err) {
+      toast.error('Error connecting to OpenAI');
+    } finally {
+      setPrLoading(false);
+    }
+  };
+
   if (loading && !stats) return (
     <div>
       <div style={{ marginBottom: 24 }}><div className="skeleton skeleton-text" style={{ width: 280, height: 28 }} /></div>
@@ -50,6 +71,9 @@ export default function CMDashboard() {
           <p style={{ color: 'var(--text-muted)', marginTop: 4 }}>Delhi Grievance Intelligence System • {format(new Date(), 'EEEE, d MMMM yyyy')}</p>
         </div>
         <div className="date-range-pills">
+          <button className="btn btn-outline btn-sm" onClick={handleGeneratePR} disabled={prLoading}>
+            {prLoading ? 'Generating...' : <><FileText size={14} style={{ marginRight: 6 }} /> Auto PR Report</>}
+          </button>
           {DATE_RANGE_PRESETS.map((p) => (
             <button key={p.label} className={`date-pill${rangeDays === p.days ? ' active' : ''}`} onClick={() => setRangeDays(p.days)} disabled={loading}>
               {p.label}
@@ -233,6 +257,23 @@ export default function CMDashboard() {
           </div>
         </div>
       </div>
+      
+      {prReport && (
+        <div className="modal-overlay" onClick={() => setPrReport(null)}>
+          <div className="modal" style={{ maxWidth: 700 }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-title">AI Generated Press Release</div>
+              <button className="btn btn-icon" onClick={() => setPrReport(null)}><X size={20} /></button>
+            </div>
+            <div className="modal-body" style={{ whiteSpace: 'pre-wrap', lineHeight: 1.6, maxHeight: '60vh', overflowY: 'auto' }}>
+              {prReport}
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-primary" onClick={() => { navigator.clipboard.writeText(prReport); toast.success('Copied to clipboard!'); }}>Copy Markdown</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

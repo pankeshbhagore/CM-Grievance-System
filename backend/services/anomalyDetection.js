@@ -31,6 +31,45 @@ async function scanOfficerAnomalies() {
 }
 
 /**
+ * Run basic predictive maintenance forecasting.
+ * Flags recurring issues in the same ward.
+ */
+async function runPredictiveMaintenance(io) {
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  
+  const hotspots = await Complaint.aggregate([
+    { $match: { createdAt: { $gte: sevenDaysAgo }, ward: { $exists: true, $ne: '' } } },
+    { $group: { _id: { ward: '$ward', category: '$category' }, count: { $sum: 1 }, complaints: { $push: '$_id' } } },
+    { $match: { count: { $gte: 5 } } } // Threshold for predictive maintenance
+  ]);
+
+  let newAlerts = 0;
+  for (const spot of hotspots) {
+    const alertId = `pm_${spot._id.ward}_${spot._id.category}_${sevenDaysAgo.toISOString().split('T')[0]}`;
+    const existing = await AuditLog.findOne({ action: 'PREDICTIVE_MAINTENANCE_ALERT', 'details.alertId': alertId });
+    if (!existing) {
+      await AuditLog.create({
+        action: 'PREDICTIVE_MAINTENANCE_ALERT',
+        entityType: 'department', // general
+        suspicious: true, // using suspicious flag to bubble up in UI
+        suspicionReason: `Predictive Maintenance: ${spot.count} ${spot._id.category} complaints in ${spot._id.ward} recently. Infrastructure review required.`,
+        details: { alertId, ward: spot._id.ward, category: spot._id.category, count: spot.count }
+      });
+
+      if (io) {
+        io.to('role_cm').to('role_super_admin').emit('predictive_maintenance_alert', {
+          ward: spot._id.ward,
+          category: spot._id.category,
+          count: spot.count
+        });
+      }
+      newAlerts++;
+    }
+  }
+  return newAlerts;
+}
+
+/**
  * Detect potential spam — multiple similar complaints from the same citizen
  * within a short timeframe.
  */
@@ -87,4 +126,9 @@ async function detectDepartmentBottlenecks() {
   }));
 }
 
-module.exports = { scanOfficerAnomalies, detectSpamComplaints, detectDepartmentBottlenecks };
+module.exports = {
+  scanOfficerAnomalies,
+  detectSpamComplaints,
+  detectDepartmentBottlenecks,
+  runPredictiveMaintenance
+};

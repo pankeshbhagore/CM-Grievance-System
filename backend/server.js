@@ -12,6 +12,7 @@ const cron = require('node-cron');
 const jwt = require('jsonwebtoken');
 
 const connectDB = require('./config/db');
+const { connectRedis } = require('./services/redisService');
 const routes = require('./routes/index');
 const Complaint = require('./models/Complaint');
 const { errorHandler, notFound } = require('./middleware/errorHandler');
@@ -23,6 +24,7 @@ const io = new Server(server, {
 });
 
 connectDB();
+connectRedis();
 
 const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
@@ -92,6 +94,19 @@ cron.schedule('0 * * * *', async () => {
     }
   } catch (err) {
     console.error('Cron error:', err.message);
+  }
+});
+
+// ---------- Cron: Daily Predictive Maintenance ----------
+cron.schedule('0 0 * * *', async () => {
+  try {
+    const { runPredictiveMaintenance } = require('./services/anomalyDetection');
+    const alerts = await runPredictiveMaintenance(io);
+    if (alerts > 0) {
+      console.log(`🔧 Generated ${alerts} predictive maintenance alerts`);
+    }
+  } catch (err) {
+    console.error('Predictive maintenance cron error:', err.message);
   }
 });
 

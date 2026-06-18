@@ -17,7 +17,8 @@ const verificationSchema = new mongoose.Schema({
   citizenFeedback: String,
   satisfactionRating: { type: Number, min: 1, max: 5 },
   rejectionReason: String,
-  escalatedAfterRejection: { type: Boolean, default: false }
+  escalatedAfterRejection: { type: Boolean, default: false },
+  proofImageHashes: [String]
 }, { _id: false });
 
 const CATEGORIES = [
@@ -74,7 +75,7 @@ const complaintSchema = new mongoose.Schema({
   resolutionTimeHours: Number,
   isOverdue: { type: Boolean, default: false },
 
-  source: { type: String, enum: ['portal', 'mobile_app', 'social_media', 'cm_visit', 'mcd311', 'manual'], default: 'portal' },
+  source: { type: String, enum: ['portal', 'mobile_app', 'social_media', 'cm_visit', 'mcd311', 'manual', 'whatsapp'], default: 'portal' },
   socialMediaRef: { type: String },
 
   mcd311TicketId: { type: String },

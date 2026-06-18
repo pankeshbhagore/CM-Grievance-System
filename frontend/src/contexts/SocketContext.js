@@ -39,6 +39,8 @@ export const SocketProvider = ({ children }) => {
         toast(`✅ ${data.title}`, { duration: 8000 });
       } else if (data.type === 'new_assignment') {
         toast.success(`📋 ${data.title}`);
+      } else if (data.type === 'predictive_maintenance_alert') {
+        toast.error(`🔮 ${data.title}: ${data.message}`, { duration: 8000 });
       } else {
         toast(data.title);
       }
