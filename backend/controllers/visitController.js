@@ -3,7 +3,8 @@ const Complaint = require('../models/Complaint');
 const { AppError, asyncHandler } = require('../middleware/errorHandler');
 
 exports.createVisit = asyncHandler(async (req, res) => {
-  const visit = await CMVisit.create({ ...req.body, cm: req.user._id });
+  const { title, description, ward, district, scheduledDate } = req.body;
+  const visit = await CMVisit.create({ title, description, ward, district, scheduledDate, cm: req.user._id });
   res.status(201).json({ success: true, visit });
 });
 

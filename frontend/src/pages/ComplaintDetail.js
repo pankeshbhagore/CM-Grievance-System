@@ -112,7 +112,19 @@ export default function ComplaintDetail() {
   const isAssigned = (complaint.assignedTo?._id || complaint.assignedTo) === user?._id;
   const canVerify = isCitizen() && isOwner && complaint.status === 'pending_verification';
   const canAssign = isAdmin() || user?.role === 'department_head';
-  const canUpdateStatus = (isEmployee() && isAssigned) || canAssign;
+  const canUpdateStatus = isAssigned && isEmployee();
+
+  const getValidNextStatuses = (current) => {
+    const flow = {
+      assigned: ['under_review', 'in_progress', 'rejected'],
+      under_review: ['in_progress', 'escalated', 'rejected'],
+      in_progress: ['pending_verification', 'escalated'],
+      reopened: ['under_review', 'in_progress', 'escalated', 'rejected'],
+      escalated: ['under_review', 'in_progress']
+    };
+    return flow[current] || [];
+  };
+  const availableStatuses = getValidNextStatuses(complaint.status);
 
   const PRIORITY_STYLES = { critical: { bg: '#fef2f2', color: '#991b1b' }, high: { bg: '#fff7ed', color: '#c2410c' }, medium: { bg: '#fffbeb', color: '#92400e' }, low: { bg: '#f0fdf4', color: '#166534' } };
   const ps = PRIORITY_STYLES[complaint.priority] || { bg: '#f8fafc', color: 'var(--text)' };
@@ -141,7 +153,7 @@ export default function ComplaintDetail() {
               {canAssign && complaint.status !== 'resolved' && (
                 <button className="btn btn-primary btn-sm" onClick={() => setShowAssign(true)}><User size={14} /> {complaint.assignedTo ? 'Reassign' : 'Assign Officer'}</button>
               )}
-              {canUpdateStatus && !['resolved', 'rejected'].includes(complaint.status) && (
+              {canUpdateStatus && !['resolved', 'rejected', 'pending_verification'].includes(complaint.status) && availableStatuses.length > 0 && (
                 <button className="btn btn-outline btn-sm" onClick={() => setShowStatus(true)}>Update Status</button>
               )}
               {canVerify && <button className="btn btn-success btn-sm" onClick={() => setShowVerify(true)}><CheckCircle size={14} /> Verify Resolution</button>}
@@ -305,11 +317,11 @@ export default function ComplaintDetail() {
                 <label className="form-label">New Status</label>
                 <select className="form-control" value={newStatus} onChange={(e) => setNewStatus(e.target.value)}>
                   <option value="">Select status...</option>
-                  <option value="under_review">Under Review</option>
-                  <option value="in_progress">In Progress</option>
-                  <option value="pending_verification">Send for Citizen Verification ✅</option>
-                  <option value="escalated">Escalate</option>
-                  <option value="rejected">Reject</option>
+                  {availableStatuses.includes('under_review') && <option value="under_review">Under Review</option>}
+                  {availableStatuses.includes('in_progress') && <option value="in_progress">In Progress</option>}
+                  {availableStatuses.includes('pending_verification') && <option value="pending_verification">Send for Citizen Verification ✅</option>}
+                  {availableStatuses.includes('escalated') && <option value="escalated">Escalate</option>}
+                  {availableStatuses.includes('rejected') && <option value="rejected">Reject</option>}
                 </select>
               </div>
               {newStatus === 'pending_verification' && (

@@ -45,7 +45,7 @@ exports.mongoIdParam = (field = 'id') => [
 ];
 
 exports.statusUpdateRules = [
-  body('status').notEmpty().withMessage('Status is required').isIn(['under_review', 'assigned', 'in_progress', 'pending_verification', 'escalated', 'rejected', 'resolved']).withMessage('Invalid status'),
+  body('status').notEmpty().withMessage('Status is required').isIn(['under_review', 'in_progress', 'pending_verification', 'escalated', 'rejected']).withMessage('Invalid status'),
   body('note').optional().trim().isLength({ max: 1000 }),
   body('resolutionNote').optional().trim().isLength({ max: 2000 }),
 ];

@@ -108,12 +108,16 @@ exports.getDepartments = asyncHandler(async (req, res) => {
 });
 
 exports.createDepartment = asyncHandler(async (req, res) => {
-  const dept = await Department.create(req.body);
+  const { name, code, description, head, complaintCategories, contactEmail, contactPhone, mcd311DeptId, slaHours } = req.body;
+  const dept = await Department.create({ name, code, description, head, complaintCategories, contactEmail, contactPhone, mcd311DeptId, slaHours });
   res.status(201).json({ success: true, department: dept });
 });
 
 exports.updateDepartment = asyncHandler(async (req, res) => {
-  const dept = await Department.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+  const { name, code, description, head, complaintCategories, contactEmail, contactPhone, mcd311DeptId, isActive, slaHours } = req.body;
+  const updates = { name, code, description, head, complaintCategories, contactEmail, contactPhone, mcd311DeptId, isActive, slaHours };
+  Object.keys(updates).forEach(key => updates[key] === undefined && delete updates[key]);
+  const dept = await Department.findByIdAndUpdate(req.params.id, updates, { new: true, runValidators: true });
   if (!dept) throw new AppError('Department not found', 404);
   res.json({ success: true, department: dept });
 });

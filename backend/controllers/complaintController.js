@@ -256,15 +256,15 @@ exports.updateStatus = asyncHandler(async (req, res) => {
   const { status, note, resolutionNote } = req.body;
   if (!status) throw new AppError('status is required', 400);
 
-  const VALID_STATUSES = ['under_review', 'assigned', 'in_progress', 'pending_verification', 'escalated', 'rejected', 'resolved'];
+  const VALID_STATUSES = ['under_review', 'in_progress', 'pending_verification', 'escalated', 'rejected'];
   if (!VALID_STATUSES.includes(status)) throw new AppError('Invalid status value', 400);
 
   const images = req.files?.map((f) => `/uploads/${f.filename}`) || [];
   const complaint = await Complaint.findById(req.params.id);
   if (!complaint) throw new AppError('Complaint not found', 404);
 
-  if (req.user.role === 'employee' && complaint.assignedTo?.toString() !== req.user._id.toString()) {
-    throw new AppError('You are not assigned to this complaint', 403);
+  if (complaint.assignedTo?.toString() !== req.user._id.toString()) {
+    throw new AppError('Only the assigned officer can update the operational status', 403);
   }
   if (['resolved', 'rejected'].includes(complaint.status)) {
     throw new AppError('Complaint is already closed', 400);
