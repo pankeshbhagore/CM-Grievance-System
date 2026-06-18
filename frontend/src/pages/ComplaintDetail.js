@@ -173,6 +173,8 @@ export default function ComplaintDetail() {
                   ['Department', complaint.department?.name || 'Not assigned'],
                   ['Source', complaint.source],
                   ['AI Confidence', complaint.aiConfidence ? `${(complaint.aiConfidence * 100).toFixed(0)}%` : 'N/A'],
+                  complaint.sentimentScore != null && ['Sentiment', `${complaint.sentimentLabel?.replace(/_/g, ' ')} (${(complaint.sentimentScore * 100).toFixed(0)}%)`],
+                  complaint.estimatedResolutionHours && ['Est. Resolution', `${complaint.estimatedResolutionHours}h`],
                   ['Upvotes', complaint.upvoteCount || 0],
                   ['Submitted', format(new Date(complaint.createdAt), 'dd MMM yyyy HH:mm')],
                   ['Due Date', complaint.dueDate ? format(new Date(complaint.dueDate), 'dd MMM yyyy') : 'N/A'],
@@ -257,9 +259,9 @@ export default function ComplaintDetail() {
             </div>
           </div>
         </div>
-
-        <CommentsThread complaintId={complaint._id} />
       </div>
+
+      <CommentsThread complaintId={complaint._id} />
 
       {showAssign && (
         <div className="modal-overlay" onClick={() => setShowAssign(false)}>
@@ -327,8 +329,8 @@ export default function ComplaintDetail() {
       )}
 
       {showVerify && (
-        <div className="modal-overlay">
-          <div className="modal">
+        <div className="modal-overlay" onClick={resetVerifyModal}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header"><div className="modal-title">✅ Verify Resolution</div></div>
             <div className="modal-body">
               <div className="alert alert-info" style={{ marginBottom: 16 }}>The officer has marked your complaint as resolved. Has your issue actually been fixed?</div>

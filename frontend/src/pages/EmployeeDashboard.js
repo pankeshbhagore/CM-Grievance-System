@@ -46,7 +46,7 @@ export default function EmployeeDashboard() {
             <span style={{ fontWeight: 600, fontSize: 14 }}>Your Workload Capacity</span>
             <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{user?.activeComplaints || 0} / {user?.bandwidth || 10} complaints</span>
           </div>
-          <div style={{ height: 8, background: '#f1f5f9', borderRadius: 4, overflow: 'hidden' }}>
+          <div style={{ height: 8, background: 'var(--card-hover)', borderRadius: 4, overflow: 'hidden' }}>
             <div style={{
               height: '100%', borderRadius: 4, transition: 'width 0.5s',
               width: `${Math.min(100, ((user?.activeComplaints || 0) / (user?.bandwidth || 10)) * 100)}%`,
@@ -78,7 +78,7 @@ export default function EmployeeDashboard() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {filtered.map((c) => (
                 <div key={c._id} onClick={() => navigate(`/complaints/${c._id}`)}
-                  style={{ border: `1px solid ${c.isCritical ? '#fecaca' : 'var(--border)'}`, borderLeft: `4px solid ${PRIORITY_COLORS[c.priority] || '#ccc'}`, borderRadius: 10, padding: '14px 16px', cursor: 'pointer', background: c.isCritical ? '#fff5f5' : 'white' }}>
+                  style={{ border: `1px solid ${c.isCritical ? '#fecaca' : 'var(--border)'}`, borderLeft: `4px solid ${PRIORITY_COLORS[c.priority] || '#ccc'}`, borderRadius: 10, padding: '14px 16px', cursor: 'pointer', background: c.isCritical ? 'var(--badge-critical-bg, #fff5f5)' : 'var(--card)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                     <span style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--text-muted)' }}>{c.ticketId}</span>
                     <span className={`badge badge-${c.status}`}>{formatStatus(c.status)}</span>

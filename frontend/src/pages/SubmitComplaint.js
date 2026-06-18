@@ -22,9 +22,16 @@ export default function SubmitComplaint() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [images, setImages] = useState([]);
+  const [imagePreviews, setImagePreviews] = useState([]);
   const [aiSuggestion, setAiSuggestion] = useState(null);
   const [isCriticalDetected, setIsCriticalDetected] = useState(false);
   const [form, setForm] = useState({ title: '', description: '', category: '', address: '', ward: '', district: '', pincode: '', landmark: '', lat: '', lng: '' });
+
+  useEffect(() => {
+    const urls = images.map(img => URL.createObjectURL(img));
+    setImagePreviews(urls);
+    return () => urls.forEach(url => URL.revokeObjectURL(url));
+  }, [images]);
 
   useEffect(() => {
     const text = `${form.title} ${form.description}`.toLowerCase();
@@ -160,7 +167,7 @@ export default function SubmitComplaint() {
               <div style={{ display: 'flex', gap: 10, marginTop: 12, flexWrap: 'wrap' }}>
                 {images.map((img, i) => (
                   <div key={i} style={{ position: 'relative' }}>
-                    <img src={URL.createObjectURL(img)} alt="" style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 8, border: '2px solid var(--border)' }} />
+                    <img src={imagePreviews[i]} alt="" style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 8, border: '2px solid var(--border)' }} />
                     <button type="button" onClick={() => setImages(images.filter((_, j) => j !== i))} style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%', background: 'var(--danger)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 11 }}>✕</button>
                   </div>
                 ))}

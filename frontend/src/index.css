@@ -64,7 +64,7 @@ body, .card, .sidebar, .header, .stat-card, .form-control, .modal { transition: 
 .main-content { margin-left: var(--sidebar-w); flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
 .page-content { flex: 1; padding: 24px; max-width: 1400px; width: 100%; }
 
-.header { height: var(--header-h); background: white; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 24px; gap: 16px; position: sticky; top: 0; z-index: 50; box-shadow: var(--shadow); }
+.header { height: var(--header-h); background: var(--card); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 24px; gap: 16px; position: sticky; top: 0; z-index: 50; box-shadow: var(--shadow); }
 
 .card { background: var(--card); border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); }
 .card-header { padding: 20px 24px 0; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
@@ -251,4 +251,45 @@ tr:last-child td { border-bottom: none; }
   .page-content { padding: 16px; }
   .dropdown-menu { position: fixed; top: var(--header-h); right: 8px; left: 8px; width: auto; min-width: 0; }
   .cmdk-overlay { padding: 20px 12px; }
+}
+
+/* AI/ML Feature Styles */
+.sentiment-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.sentiment-badge.neutral { background: var(--card-hover); color: var(--text-muted); }
+.sentiment-badge.concerned { background: #fef3c7; color: #92400e; }
+.sentiment-badge.frustrated { background: #fed7aa; color: #c2410c; }
+.sentiment-badge.highly_frustrated { background: #fecaca; color: #991b1b; }
+[data-theme="dark"] .sentiment-badge.concerned { background: #422006; color: #fbbf24; }
+[data-theme="dark"] .sentiment-badge.frustrated { background: #431407; color: #fb923c; }
+[data-theme="dark"] .sentiment-badge.highly_frustrated { background: #450a0a; color: #f87171; }
+
+.ai-prediction-card {
+  background: linear-gradient(135deg, rgba(26, 58, 107, 0.05), rgba(124, 58, 237, 0.05));
+  border: 1px solid rgba(124, 58, 237, 0.2);
+  border-radius: 10px;
+  padding: 12px 16px;
+}
+[data-theme="dark"] .ai-prediction-card {
+  background: linear-gradient(135deg, rgba(26, 58, 107, 0.15), rgba(124, 58, 237, 0.15));
+  border-color: rgba(124, 58, 237, 0.3);
+}
+
+.anomaly-alert {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-left: 4px solid var(--danger);
+  border-radius: 8px;
+  padding: 12px 16px;
+}
+[data-theme="dark"] .anomaly-alert {
+  background: #450a0a;
+  border-color: #7f1d1d;
 }

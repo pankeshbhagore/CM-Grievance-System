@@ -47,8 +47,9 @@ export const createUser = (data) => API.post('/users', data);
 export const updateUser = (id, data) => API.put(`/users/${id}`, data);
 export const toggleUserActive = (id) => API.put(`/users/${id}/toggle-active`);
 
-// Audit
+// Audit & AI
 export const getAuditLogs = (params) => API.get('/audit-logs', { params });
+export const getAiAnomalies = () => API.get('/ai/anomalies');
 
 // Departments
 export const getDepartments = () => API.get('/departments');

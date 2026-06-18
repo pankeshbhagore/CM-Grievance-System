@@ -16,7 +16,7 @@ exports.getOfficers = asyncHandler(async (req, res) => {
   const officersWithLoad = officers.map((o) => ({
     ...o.toObject(),
     id: o._id,
-    capacityPercent: Math.round((o.activeComplaints / o.bandwidth) * 100),
+    capacityPercent: o.bandwidth > 0 ? Math.round((o.activeComplaints / o.bandwidth) * 100) : 0,
     isFull: o.activeComplaints >= o.bandwidth
   }));
 
@@ -37,7 +37,7 @@ exports.getOfficerPerformance = asyncHandler(async (req, res) => {
     stats: o.stats,
     activeComplaints: o.activeComplaints,
     bandwidth: o.bandwidth,
-    capacityPercent: Math.round((o.activeComplaints / o.bandwidth) * 100),
+    capacityPercent: o.bandwidth > 0 ? Math.round((o.activeComplaints / o.bandwidth) * 100) : 0,
     falseClosureRate: o.stats.totalAssigned > 0 ? ((o.stats.falseClosures / o.stats.totalAssigned) * 100).toFixed(1) : '0'
   }));
 
@@ -49,7 +49,9 @@ exports.getAllUsers = asyncHandler(async (req, res) => {
   const { role, search, page = 1, limit = 20 } = req.query;
   const query = {};
   if (role) query.role = role;
-  if (search) query.$or = [{ name: new RegExp(search, 'i') }, { email: new RegExp(search, 'i') }];
+  
+  const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  if (search) query.$or = [{ name: new RegExp(escapeRegex(search), 'i') }, { email: new RegExp(escapeRegex(search), 'i') }];
 
   const pageNum = Math.max(1, parseInt(page));
   const limitNum = Math.min(100, parseInt(limit));
@@ -63,16 +65,20 @@ exports.getAllUsers = asyncHandler(async (req, res) => {
 });
 
 exports.createUser = asyncHandler(async (req, res) => {
-  const { email } = req.body;
+  const { email, name, password, phone, role, department, designation, employeeId, bandwidth, ward, district } = req.body;
   const existing = await User.findOne({ email: email?.toLowerCase() });
   if (existing) throw new AppError('Email already registered', 400);
 
-  const user = await User.create(req.body);
+  const user = await User.create({ name, email, password, phone, role, department, designation, employeeId, bandwidth, ward, district });
   res.status(201).json({ success: true, user: user.toSafeObject() });
 });
 
 exports.updateUser = asyncHandler(async (req, res) => {
-  const { password, ...updates } = req.body; // password changes go through changePassword only
+  const { email, name, phone, role, department, designation, employeeId, bandwidth, ward, district } = req.body;
+  const updates = { email, name, phone, role, department, designation, employeeId, bandwidth, ward, district };
+  
+  Object.keys(updates).forEach(key => updates[key] === undefined && delete updates[key]);
+
   const user = await User.findByIdAndUpdate(req.params.id, updates, { new: true, runValidators: true }).select('-password');
   if (!user) throw new AppError('User not found', 404);
   res.json({ success: true, user });

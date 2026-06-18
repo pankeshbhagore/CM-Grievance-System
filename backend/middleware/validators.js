@@ -32,7 +32,7 @@ exports.changePasswordRules = [
 exports.complaintRules = [
   body('title').trim().notEmpty().withMessage('Title is required').isLength({ max: 200 }),
   body('description').trim().notEmpty().withMessage('Description is required').isLength({ min: 10, max: 2000 }).withMessage('Description must be 10-2000 characters'),
-  body('category').notEmpty().withMessage('Category is required'),
+  body('category').optional().isIn(['roads_potholes', 'water_supply', 'garbage_sanitation', 'sewage', 'electricity', 'street_lights', 'traffic', 'encroachment', 'pollution', 'park_maintenance', 'building_safety', 'drainage', 'public_transport', 'noise_complaint', 'other']).withMessage('Invalid category'),
   body('address').trim().notEmpty().withMessage('Address is required'),
 ];
 
@@ -42,4 +42,21 @@ exports.commentRules = [
 
 exports.mongoIdParam = (field = 'id') => [
   param(field).isMongoId().withMessage('Invalid ID format'),
+];
+
+exports.statusUpdateRules = [
+  body('status').notEmpty().withMessage('Status is required').isIn(['under_review', 'assigned', 'in_progress', 'pending_verification', 'escalated', 'rejected', 'resolved']).withMessage('Invalid status'),
+  body('note').optional().trim().isLength({ max: 1000 }),
+  body('resolutionNote').optional().trim().isLength({ max: 2000 }),
+];
+
+exports.assignRules = [
+  body('officerId').notEmpty().withMessage('Officer ID is required').isMongoId().withMessage('Invalid officer ID'),
+  body('note').optional().trim().isLength({ max: 1000 }),
+];
+
+exports.verifyRules = [
+  body('confirmed').isBoolean().withMessage('confirmed (boolean) is required'),
+  body('rating').optional().isInt({ min: 1, max: 5 }).withMessage('Rating must be 1-5'),
+  body('rejectionReason').optional().trim().isLength({ max: 1000 }),
 ];

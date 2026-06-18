@@ -93,7 +93,7 @@ export default function OfficersPage() {
                   <span style={{ color: 'var(--text-muted)' }}>Workload</span>
                   <span style={{ fontWeight: 600, color: getCapacityColor(o.capacityPercent) }}>{o.capacityPercent}%</span>
                 </div>
-                <div style={{ height: 6, background: '#f1f5f9', borderRadius: 3 }}>
+                <div style={{ height: 6, background: 'var(--card-hover)', borderRadius: 3 }}>
                   <div style={{ height: '100%', borderRadius: 3, width: `${Math.min(100, o.capacityPercent)}%`, background: getCapacityColor(o.capacityPercent), transition: 'width 0.5s' }} />
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>{o.activeComplaints}/{o.bandwidth} active complaints</div>
@@ -106,7 +106,7 @@ export default function OfficersPage() {
                   ['Avg Time', `${o.stats?.avgResolutionHours || 0}h`, 'var(--info)'],
                   ['Satisfaction', o.stats?.avgSatisfactionScore ? `${o.stats.avgSatisfactionScore}/5 ⭐` : 'N/A', 'var(--warning)'],
                 ].map(([label, val, color]) => (
-                  <div key={label} style={{ background: '#f8fafc', borderRadius: 8, padding: '8px 12px' }}>
+                  <div key={label} style={{ background: 'var(--card-hover)', borderRadius: 8, padding: '8px 12px' }}>
                     <div style={{ fontSize: 16, fontWeight: 700, color }}>{val}</div>
                     <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{label}</div>
                   </div>

@@ -86,6 +86,10 @@ const complaintSchema = new mongoose.Schema({
   aiSuggestedCategory: { type: String },
   aiSuggestedPriority: { type: String },
 
+  sentimentScore: { type: Number, min: 0, max: 1 },
+  sentimentLabel: { type: String, enum: ['neutral', 'concerned', 'frustrated', 'highly_frustrated'] },
+  estimatedResolutionHours: { type: Number },
+
   isDuplicate: { type: Boolean, default: false },
   parentComplaint: { type: mongoose.Schema.Types.ObjectId, ref: 'Complaint' },
   duplicateCount: { type: Number, default: 0 },

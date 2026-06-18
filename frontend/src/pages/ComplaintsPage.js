@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import toast from 'react-hot-toast';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { getComplaints } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
-import { CATEGORY_OPTIONS, PRIORITY_COLORS, formatStatus, exportToCSV } from '../utils/helpers';
+import { CATEGORY_OPTIONS, PRIORITY_COLORS, formatStatus, formatCategory, exportToCSV } from '../utils/helpers';
 import { SkeletonTableRows } from '../components/shared/Skeletons';
 import { format } from 'date-fns';
 import { Search, Plus, ChevronLeft, ChevronRight, Download } from 'lucide-react';
@@ -21,6 +22,8 @@ export default function ComplaintsPage() {
     search: '',
     page: 1
   });
+  const [searchInput, setSearchInput] = useState('');
+  const searchTimeout = useRef(null);
 
   const fetchComplaints = useCallback(async () => {
     setLoading(true);
@@ -39,9 +42,21 @@ export default function ComplaintsPage() {
 
   const setFilter = (key, val) => setFilters((f) => ({ ...f, [key]: val, page: 1 }));
 
-  const handleExportCSV = () => {
+  const handleSearchChange = (value) => {
+    setSearchInput(value);
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    searchTimeout.current = setTimeout(() => setFilter('search', value), 400);
+  };
+
+  const handleExportCSV = async () => {
+    try {
+      const params = { ...filters, limit: 10000, page: 1 };
+      Object.keys(params).forEach((k) => !params[k] && delete params[k]);
+      const { data } = await getComplaints(params);
+      const allComplaints = data.complaints;
+      if (allComplaints.length === 0) return toast.error('No complaints to export');
     exportToCSV(
-      complaints,
+      allComplaints,
       [
         { label: 'Ticket ID', value: 'ticketId' },
         { label: 'Title', value: 'title' },
@@ -57,7 +72,11 @@ export default function ComplaintsPage() {
         { label: 'Critical', value: (r) => (r.isCritical ? 'Yes' : 'No') },
       ],
       `complaints-export-${format(new Date(), 'yyyy-MM-dd')}.csv`
-    );
+      );
+      toast.success(`Exported ${allComplaints.length} complaints`);
+    } catch (err) {
+      toast.error('Failed to export complaints');
+    }
   };
 
   const priorityDot = (p) => <span style={{ width: 8, height: 8, borderRadius: '50%', background: PRIORITY_COLORS[p] || '#ccc', display: 'inline-block', marginRight: 4 }} />;
@@ -80,7 +99,7 @@ export default function ComplaintsPage() {
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
             <div style={{ position: 'relative', flex: '1 1 200px' }}>
               <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-              <input className="form-control" placeholder="Search complaints..." style={{ paddingLeft: 32 }} value={filters.search} onChange={(e) => setFilter('search', e.target.value)} />
+              <input className="form-control" placeholder="Search complaints..." style={{ paddingLeft: 32 }} value={searchInput} onChange={(e) => handleSearchChange(e.target.value)} />
             </div>
             <select className="form-control" style={{ flex: '1 1 140px' }} value={filters.status} onChange={(e) => setFilter('status', e.target.value)}>
               <option value="">All Status</option>
@@ -136,14 +155,14 @@ export default function ComplaintsPage() {
                 {complaints.map((c) => (
                   <tr key={c._id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/complaints/${c._id}`)}>
                     <td>
-                      <span style={{ fontFamily: 'monospace', fontSize: 12, background: '#f1f5f9', padding: '2px 6px', borderRadius: 4 }}>{c.ticketId}</span>
+                      <span style={{ fontFamily: 'monospace', fontSize: 12, background: 'var(--card-hover)', padding: '2px 6px', borderRadius: 4 }}>{c.ticketId}</span>
                       {c.isCritical && <span style={{ marginLeft: 4 }}>🚨</span>}
                     </td>
                     <td>
                       <div style={{ fontWeight: 500, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.title}</div>
                       {c.isDuplicate && <span style={{ fontSize: 10, color: 'var(--warning)' }}>Duplicate</span>}
                     </td>
-                    <td><span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{c.category?.replace('_', ' ')}</span></td>
+                    <td><span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{formatCategory(c.category)}</span></td>
                     <td>{priorityDot(c.priority)}<span style={{ fontSize: 12, textTransform: 'capitalize', color: PRIORITY_COLORS[c.priority] }}>{c.priority}</span></td>
                     <td><span className={`badge badge-${c.status}`}>{formatStatus(c.status)}</span></td>
                     <td><span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{c.ward || c.district || '—'}</span></td>

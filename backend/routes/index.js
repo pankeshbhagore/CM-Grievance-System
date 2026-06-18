@@ -3,7 +3,8 @@ const router = express.Router();
 const { protect, authorize } = require('../middleware/auth');
 const upload = require('../middleware/upload');
 const {
-  validate, registerRules, loginRules, changePasswordRules, complaintRules, commentRules, mongoIdParam
+  validate, registerRules, loginRules, changePasswordRules, complaintRules, commentRules, mongoIdParam,
+  statusUpdateRules, assignRules, verifyRules
 } = require('../middleware/validators');
 
 const authCtrl = require('../controllers/authController');
@@ -29,9 +30,9 @@ router.get('/complaints', protect, complaintCtrl.getComplaints);
 router.get('/complaints/nearby', protect, complaintCtrl.getNearbyComplaints);
 router.get('/complaints/stats', protect, authorize('cm', 'super_admin', 'department_head'), complaintCtrl.getDashboardStats);
 router.get('/complaints/:id', protect, mongoIdParam(), validate, complaintCtrl.getComplaint);
-router.post('/complaints/:id/assign', protect, authorize('cm', 'super_admin', 'department_head'), mongoIdParam(), validate, complaintCtrl.assignComplaint);
-router.put('/complaints/:id/status', protect, authorize('employee', 'department_head', 'super_admin'), mongoIdParam(), upload.array('images', 5), validate, complaintCtrl.updateStatus);
-router.post('/complaints/:id/verify', protect, authorize('citizen'), mongoIdParam(), validate, complaintCtrl.citizenVerify);
+router.post('/complaints/:id/assign', protect, authorize('cm', 'super_admin', 'department_head'), mongoIdParam(), assignRules, validate, complaintCtrl.assignComplaint);
+router.put('/complaints/:id/status', protect, authorize('employee', 'department_head', 'super_admin'), mongoIdParam(), upload.array('images', 5), statusUpdateRules, validate, complaintCtrl.updateStatus);
+router.post('/complaints/:id/verify', protect, authorize('citizen'), mongoIdParam(), verifyRules, validate, complaintCtrl.citizenVerify);
 router.post('/complaints/:id/upvote', protect, mongoIdParam(), validate, complaintCtrl.upvoteComplaint);
 
 // ---------- Comments ----------
@@ -46,8 +47,17 @@ router.post('/users', protect, authorize('super_admin'), userCtrl.createUser);
 router.put('/users/:id', protect, authorize('super_admin'), mongoIdParam(), validate, userCtrl.updateUser);
 router.put('/users/:id/toggle-active', protect, authorize('super_admin'), mongoIdParam(), validate, userCtrl.toggleUserActive);
 
-// ---------- Audit ----------
+// ---------- Audit & AI Anomalies ----------
 router.get('/audit-logs', protect, authorize('cm', 'super_admin'), userCtrl.getAuditLogs);
+
+router.get('/ai/anomalies', protect, authorize('cm', 'super_admin'), async (req, res) => {
+  const { scanOfficerAnomalies, detectDepartmentBottlenecks } = require('../services/anomalyDetection');
+  const [officerAnomalies, departmentBottlenecks] = await Promise.all([
+    scanOfficerAnomalies(),
+    detectDepartmentBottlenecks(),
+  ]);
+  res.json({ success: true, officerAnomalies, departmentBottlenecks });
+});
 
 // ---------- Departments ----------
 router.get('/departments', protect, userCtrl.getDepartments);

@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getComplaints, getNearbyComplaints } from '../services/api';
+import { formatStatus, formatCategory } from '../utils/helpers';
 import useLeaflet from '../hooks/useLeaflet';
 import { useTheme } from '../contexts/ThemeContext';
 import { Navigation, MapPin, Map as MapIcon, Moon, Satellite, Mountain } from 'lucide-react';
@@ -43,6 +45,14 @@ export default function MapView() {
   const leafletMap = useRef(null);
   const markersRef = useRef([]);
   const tileLayerRef = useRef(null);
+  const userMarkerRef = useRef(null);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const handleNav = (e) => navigate(e.detail);
+    window.addEventListener('navTo', handleNav);
+    return () => window.removeEventListener('navTo', handleNav);
+  }, [navigate]);
 
   const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -130,10 +140,10 @@ export default function MapView() {
           <div style="font-size:11px;color:#666;margin-bottom:4px">${c.address}</div>
           <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
             <span style="background:${color};color:white;padding:2px 6px;border-radius:10px;font-size:10px;text-transform:uppercase">${c.priority}</span>
-            <span style="background:#f1f5f9;padding:2px 6px;border-radius:10px;font-size:10px">${c.status?.replace('_', ' ')}</span>
+            <span style="background:var(--card-hover);padding:2px 6px;border-radius:10px;font-size:10px">${formatStatus(c.status)}</span>
           </div>
-          <div style="font-size:11px;color:#888">${c.category?.replace('_', ' ')}</div>
-          <a href="/complaints/${c._id}" style="display:block;margin-top:8px;font-size:12px;color:#1a3a6b;font-weight:600">View Details →</a>
+          <div style="font-size:11px;color:#888">${formatCategory(c.category)}</div>
+          <a href="/complaints/${c._id}" onclick="event.preventDefault(); window.dispatchEvent(new CustomEvent('navTo', {detail: '/complaints/${c._id}'}))" style="display:block;margin-top:8px;font-size:12px;color:var(--primary);font-weight:600">View Details →</a>
         </div>
       `);
       markersRef.current.push(marker);
@@ -151,8 +161,9 @@ export default function MapView() {
 
       const L = window.L;
       if (L && leafletMap.current) {
+        if (userMarkerRef.current) userMarkerRef.current.remove();
         const icon = L.divIcon({ html: `<div style="width:20px;height:20px;border-radius:50%;background:#1a3a6b;border:3px solid white;box-shadow:0 0 0 3px rgba(26,58,107,0.3)"></div>`, className: '', iconSize: [20, 20], iconAnchor: [10, 10] });
-        L.marker([lat, lng], { icon }).addTo(leafletMap.current).bindPopup('📍 Your Location').openPopup();
+        userMarkerRef.current = L.marker([lat, lng], { icon }).addTo(leafletMap.current).bindPopup('📍 Your Location').openPopup();
       }
     }, () => {});
   };

@@ -34,9 +34,10 @@ app.use(express.urlencoded({ extended: true }));
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 app.use('/uploads', express.static(uploadsDir));
 
+// Specific limiters first — Express matches routes in order
+app.use('/api/auth/login', rateLimit({ windowMs: 15 * 60 * 1000, max: 20, message: { success: false, message: 'Too many login attempts, try again later' } }));
+app.use('/api/track/', rateLimit({ windowMs: 15 * 60 * 1000, max: 60, message: { success: false, message: 'Too many tracking requests, try again later' } }));
 app.use('/api/', rateLimit({ windowMs: 15 * 60 * 1000, max: 300, standardHeaders: true, legacyHeaders: false }));
-app.use('/api/auth/login', rateLimit({ windowMs: 15 * 60 * 1000, max: 20, message: 'Too many login attempts, try again later' }));
-app.use('/api/track/', rateLimit({ windowMs: 15 * 60 * 1000, max: 60, message: 'Too many tracking requests, try again later' }));
 
 app.use((req, res, next) => { req.io = io; next(); });
 
@@ -53,12 +54,15 @@ app.use(errorHandler);
 // listener was registered with that exact string — a fragile pattern that
 // silently failed to notify anyone who reconnected with a new socket without
 // re-subscribing to that literal event name.
-io.use((socket, next) => {
+io.use(async (socket, next) => {
   try {
     const token = socket.handshake.auth?.token;
     if (token) {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       socket.userId = decoded.id;
+      const User = require('./models/User');
+      const user = await User.findById(decoded.id).select('role').lean();
+      if (user) socket.userRole = user.role;
     }
     next();
   } catch {
@@ -67,7 +71,10 @@ io.use((socket, next) => {
 });
 
 io.on('connection', (socket) => {
-  if (socket.userId) socket.join(`user_${socket.userId}`);
+  if (socket.userId) {
+    socket.join(`user_${socket.userId}`);
+    if (socket.userRole) socket.join(`role_${socket.userRole}`);
+  }
   socket.on('join_room', (room) => socket.join(room));
   socket.on('disconnect', () => {});
 });
@@ -80,7 +87,7 @@ cron.schedule('0 * * * *', async () => {
       { $set: { isOverdue: true } }
     );
     if (updated.modifiedCount > 0) {
-      io.emit('overdue_complaints', { count: updated.modifiedCount });
+      io.to('role_cm').to('role_super_admin').emit('overdue_complaints', { count: updated.modifiedCount });
       console.log(`⏰ Marked ${updated.modifiedCount} complaints as overdue`);
     }
   } catch (err) {

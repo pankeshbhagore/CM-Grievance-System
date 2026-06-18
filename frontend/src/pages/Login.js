@@ -58,7 +58,7 @@ export default function Login() {
             </button>
           </form>
 
-          <div style={{ marginTop: 24, padding: '16px', background: '#f8faff', borderRadius: 10, border: '1px solid #e8f0fe' }}>
+          <div style={{ marginTop: 24, padding: '16px', background: 'var(--card-hover)', borderRadius: 10, border: '1px solid var(--border)' }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>Demo Accounts (Password: password123)</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {DEMO_ACCOUNTS.map((acc) => (

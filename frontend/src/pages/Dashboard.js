@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { getComplaints } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
-import { formatCategory } from '../utils/helpers';
+import { formatCategory, formatStatus } from '../utils/helpers';
 import { format } from 'date-fns';
 import { Plus, CheckCircle, Clock } from 'lucide-react';
 
@@ -13,7 +14,10 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getComplaints({ limit: 10 }).then(({ data }) => setComplaints(data.complaints)).finally(() => setLoading(false));
+    getComplaints({ limit: 100 })
+      .then(({ data }) => setComplaints(data.complaints))
+      .catch((err) => toast.error('Failed to load complaints'))
+      .finally(() => setLoading(false));
   }, []);
 
   const pending = complaints.filter((c) => !['resolved', 'rejected'].includes(c.status)).length;
@@ -61,7 +65,7 @@ export default function Dashboard() {
                 <div style={{ fontWeight: 500, fontSize: 13 }}>{c.title}</div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{c.ticketId} • {formatCategory(c.category)} • {format(new Date(c.createdAt), 'dd MMM yyyy')}</div>
               </div>
-              <span className={`badge badge-${c.status}`}>{c.status?.replace('_', ' ')}</span>
+              <span className={`badge badge-${c.status}`}>{formatStatus(c.status)}</span>
             </div>
           ))}
         </div>

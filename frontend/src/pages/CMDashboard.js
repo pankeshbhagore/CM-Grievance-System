@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { getDashboardStats, getComplaints } from '../services/api';
-import { formatCategory, DATE_RANGE_PRESETS } from '../utils/helpers';
+import { getDashboardStats, getComplaints, getAiAnomalies } from '../services/api';
+import { formatCategory, formatStatus, DATE_RANGE_PRESETS } from '../utils/helpers';
 import { SkeletonStatsGrid } from '../components/shared/Skeletons';
 import { AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
@@ -12,6 +12,7 @@ const COLORS = ['#1a3a6b', '#ff6b35', '#16a34a', '#d97706', '#7c3aed', '#0891b2'
 export default function CMDashboard() {
   const [stats, setStats] = useState(null);
   const [criticalComplaints, setCriticalComplaints] = useState([]);
+  const [anomalies, setAnomalies] = useState(null);
   const [loading, setLoading] = useState(true);
   const [rangeDays, setRangeDays] = useState(null); // null = all time
   const navigate = useNavigate();
@@ -20,10 +21,12 @@ export default function CMDashboard() {
     setLoading(true);
     Promise.all([
       getDashboardStats(rangeDays === null ? {} : { days: rangeDays }),
-      getComplaints({ priority: 'critical', status: 'submitted,under_review,assigned,in_progress', limit: 5 })
-    ]).then(([statsRes, critRes]) => {
+      getComplaints({ priority: 'critical', status: 'submitted,under_review,assigned,in_progress', limit: 5 }),
+      getAiAnomalies()
+    ]).then(([statsRes, critRes, anomalyRes]) => {
       setStats(statsRes.data.stats);
       setCriticalComplaints(critRes.data.complaints);
+      setAnomalies(anomalyRes.data);
     }).finally(() => setLoading(false));
   }, [rangeDays]);
 
@@ -93,6 +96,45 @@ export default function CMDashboard() {
           <div><div className="stat-value" style={{ color: 'var(--primary)', fontSize: 20 }}>View Grievance Map</div><div className="stat-label">See all complaints on Delhi map with hotspots</div></div>
         </div>
       </div>
+
+      {anomalies && (anomalies.officerAnomalies?.length > 0 || anomalies.departmentBottlenecks?.length > 0) && (
+        <div className="card" style={{ marginBottom: 24, border: '1px solid rgba(124, 58, 237, 0.3)' }}>
+          <div className="card-header" style={{ background: 'linear-gradient(135deg, rgba(26, 58, 107, 0.05), rgba(124, 58, 237, 0.05))', borderRadius: '12px 12px 0 0' }}>
+            <div className="card-title">🤖 AI Insights & Anomalies</div>
+          </div>
+          <div className="card-body">
+            <div className="grid grid-2">
+              {anomalies.departmentBottlenecks?.length > 0 && (
+                <div>
+                  <div style={{ fontWeight: 600, marginBottom: 12, fontSize: 13, color: 'var(--text-muted)' }}>DEPARTMENT BOTTLENECKS</div>
+                  {anomalies.departmentBottlenecks.slice(0, 3).map((b, i) => (
+                    <div key={i} className="anomaly-alert" style={{ marginBottom: 8, padding: '10px 14px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--danger)' }}>{b.department}</span>
+                        <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 6px', background: '#fecaca', color: '#991b1b', borderRadius: 4 }}>{b.severity.toUpperCase()}</span>
+                      </div>
+                      <div style={{ fontSize: 12 }}>{b.overdue} overdue complaints • Avg age: {b.avgAgeHours}h</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {anomalies.officerAnomalies?.length > 0 && (
+                <div>
+                  <div style={{ fontWeight: 600, marginBottom: 12, fontSize: 13, color: 'var(--text-muted)' }}>OFFICER BEHAVIOR</div>
+                  {anomalies.officerAnomalies.slice(0, 3).map((a, i) => (
+                    <div key={i} className="anomaly-alert" style={{ marginBottom: 8, padding: '10px 14px' }}>
+                      <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--danger)' }}>{a.officer.name}</div>
+                      <div style={{ fontSize: 12, marginTop: 4 }}>
+                        {a.anomalies.map((an, j) => <div key={j}>⚠️ {an.message}</div>)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-2" style={{ marginBottom: 24 }}>
         <div className="card">
@@ -183,9 +225,9 @@ export default function CMDashboard() {
         <div className="card-body">
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             {stats?.statusCounts?.map((s) => (
-              <div key={s._id} style={{ flex: '1 1 120px', background: '#f8fafc', borderRadius: 10, padding: '14px 18px', cursor: 'pointer', border: '1px solid var(--border)' }} onClick={() => navigate(`/complaints?status=${s._id}`)}>
+              <div key={s._id} style={{ flex: '1 1 120px', background: 'var(--card-hover)', borderRadius: 10, padding: '14px 18px', cursor: 'pointer', border: '1px solid var(--border)' }} onClick={() => navigate(`/complaints?status=${s._id}`)}>
                 <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--primary)' }}>{s.count}</div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2, textTransform: 'capitalize' }}>{s._id?.replace('_', ' ')}</div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{formatStatus(s._id)}</div>
               </div>
             ))}
           </div>

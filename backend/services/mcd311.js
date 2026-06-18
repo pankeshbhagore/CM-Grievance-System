@@ -42,7 +42,7 @@ async function syncComplaintToMCD311(complaint) {
   } catch (err) {
     console.warn('[MCD311] API unavailable, using offline fallback:', err.message);
     return {
-      success: true,
+      success: false,
       mcd311TicketId: `OFFLINE-${Date.now()}`,
       status: 'queued_for_sync',
       isMock: true,

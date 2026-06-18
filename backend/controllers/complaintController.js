@@ -55,6 +55,9 @@ exports.submitComplaint = asyncHandler(async (req, res) => {
     isDuplicate,
     parentComplaint,
     dueDate,
+    sentimentScore: ai.sentiment?.score,
+    sentimentLabel: ai.sentiment?.label,
+    estimatedResolutionHours: ai.estimatedResolutionHours?.estimatedHours,
     timeline: [{ status: 'submitted', message: 'Complaint submitted successfully', updatedBy: req.user._id }]
   });
 
@@ -72,6 +75,16 @@ exports.submitComplaint = asyncHandler(async (req, res) => {
 
   if (dept) {
     await Department.findByIdAndUpdate(dept._id, { $inc: { 'stats.totalComplaints': 1, 'stats.pending': 1 } });
+  }
+
+  if (ai.sentiment?.label === 'highly_frustrated' && !complaint.isCritical) {
+    const officials = await User.find({ role: { $in: ['cm', 'super_admin'] }, isActive: true }).select('_id');
+    await notifyMany(req.io, officials.map(o => o._id), {
+      type: 'high_frustration_alert',
+      title: '😤 Highly Frustrated Citizen',
+      message: `${complaint.title} — Sentiment score: ${ai.sentiment?.score}`,
+      complaintId: complaint._id
+    });
   }
 
   // Real-time + persisted notifications to CM/admins for critical complaints
@@ -150,7 +163,7 @@ exports.getComplaint = asyncHandler(async (req, res) => {
 
   if (req.user.role === 'citizen' && !isOwner) throw new AppError('Not authorized to view this complaint', 403);
   if (req.user.role === 'employee' && !isAssignee) throw new AppError('Not authorized to view this complaint', 403);
-  if (req.user.role === 'department_head' && !isPrivileged && complaint.department?._id?.toString() !== req.user.department?._id?.toString()) {
+  if (req.user.role === 'department_head' && complaint.department?._id?.toString() !== req.user.department?._id?.toString()) {
     throw new AppError('Not authorized to view this complaint', 403);
   }
 
@@ -243,7 +256,7 @@ exports.updateStatus = asyncHandler(async (req, res) => {
   const { status, note, resolutionNote } = req.body;
   if (!status) throw new AppError('status is required', 400);
 
-  const VALID_STATUSES = ['under_review', 'in_progress', 'pending_verification', 'escalated', 'rejected', 'resolved'];
+  const VALID_STATUSES = ['under_review', 'assigned', 'in_progress', 'pending_verification', 'escalated', 'rejected', 'resolved'];
   if (!VALID_STATUSES.includes(status)) throw new AppError('Invalid status value', 400);
 
   const images = req.files?.map((f) => `/uploads/${f.filename}`) || [];
@@ -264,6 +277,7 @@ exports.updateStatus = asyncHandler(async (req, res) => {
   }
 
   if (status === 'pending_verification') {
+    complaint.status = 'pending_verification';
     complaint.resolutionNote = resolutionNote;
     complaint.resolutionImages.push(...images);
     complaint.verification = { requestedAt: new Date(), citizenConfirmed: null };
@@ -327,9 +341,13 @@ exports.citizenVerify = asyncHandler(async (req, res) => {
       }
     }
     if (complaint.department) {
-      await Department.findByIdAndUpdate(complaint.department, {
+      const dept = await Department.findByIdAndUpdate(complaint.department, {
         $inc: { 'stats.resolved': 1, 'stats.pending': -1, 'stats.sumResolutionHours': complaint.resolutionTimeHours }
-      });
+      }, { new: true });
+      if (dept && dept.stats.resolved > 0) {
+        dept.stats.avgResolutionHours = parseFloat((dept.stats.sumResolutionHours / dept.stats.resolved).toFixed(1));
+        await dept.save();
+      }
     }
   } else {
     if (!rejectionReason?.trim()) throw new AppError('Please explain why the resolution is rejected', 400);
