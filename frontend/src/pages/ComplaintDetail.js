@@ -110,6 +110,34 @@ export default function ComplaintDetail() {
     } finally { setActionLoading(false); }
   };
 
+  const fastUpdateStatus = async (status) => {
+    setActionLoading(true);
+    let latitude = null;
+    let longitude = null;
+
+    if (status === 'pending_verification') {
+      if (navigator.geolocation) {
+        try {
+          const position = await new Promise((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000 });
+          });
+          latitude = position.coords.latitude;
+          longitude = position.coords.longitude;
+        } catch (err) {
+          toast.warning('Could not capture location. Geo-fence SLA tracking will flag this.');
+        }
+      }
+    }
+
+    try {
+      await updateComplaintStatus(id, { status, latitude, longitude });
+      toast.success('Status advanced successfully');
+      refreshComplaint();
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Failed to update status'));
+    } finally { setActionLoading(false); }
+  };
+
   const handleVerify = async (confirmed) => {
     if (confirmed && rating === 0) return toast.error('Please rate the resolution (1-5 stars)');
     if (!confirmed && !verifyReason.trim()) return toast.error("Please explain why you're rejecting");
@@ -144,6 +172,64 @@ export default function ComplaintDetail() {
     return flow[current] || [];
   };
   const availableStatuses = getValidNextStatuses(complaint.status);
+  
+  // Disable standard update status if CM somehow bypassed auth check
+  const canActuallyUpdateStatus = canUpdateStatus && user?.role !== 'cm';
+
+  const renderStepper = () => {
+    const steps = [
+      { id: 'submitted', label: 'Submitted' },
+      { id: 'assigned', label: 'Assigned' },
+      { id: 'under_review', label: 'Under Review' },
+      { id: 'in_progress', label: 'In Progress' },
+      { id: 'pending_verification', label: 'Verification' },
+      { id: 'resolved', label: 'Resolved' }
+    ];
+
+    const currentIdx = steps.findIndex(s => s.id === complaint.status);
+    const resolvedIdx = complaint.status === 'resolved' ? 5 : (complaint.status === 'pending_verification' ? 4 : currentIdx);
+
+    return (
+      <div className="card" style={{ marginBottom: 20, overflow: 'hidden' }}>
+        <div className="card-body" style={{ background: '#f8fafc', padding: '24px 20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'relative' }}>
+            <div style={{ position: 'absolute', top: 14, left: 20, right: 20, height: 2, background: '#e2e8f0', zIndex: 1 }} />
+            <div style={{ position: 'absolute', top: 14, left: 20, width: resolvedIdx >= 0 ? `${(Math.max(0, resolvedIdx) / 5) * 100}%` : '0%', height: 2, background: '#10b981', zIndex: 1, transition: 'width 0.4s ease' }} />
+            
+            {steps.map((step, idx) => {
+              const isPast = idx < resolvedIdx || complaint.status === 'resolved';
+              const isCurrent = idx === resolvedIdx;
+              
+              return (
+                <div key={step.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, zIndex: 2, position: 'relative', width: 80 }}>
+                  <div style={{ 
+                    width: 30, height: 30, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: isPast ? '#10b981' : isCurrent ? '#3b82f6' : '#fff',
+                    border: `2px solid ${isPast ? '#10b981' : isCurrent ? '#3b82f6' : '#cbd5e1'}`,
+                    color: (isPast || isCurrent) ? '#fff' : '#94a3b8',
+                    fontWeight: 600, fontSize: 13, transition: 'all 0.3s ease'
+                  }}>
+                    {isPast ? '✓' : idx + 1}
+                  </div>
+                  <div style={{ fontSize: 11, fontWeight: isCurrent ? 700 : 500, color: isCurrent ? '#0f172a' : '#64748b', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                    {step.label}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {canActuallyUpdateStatus && availableStatuses.length > 0 && complaint.status !== 'pending_verification' && (
+            <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'center', gap: 12 }}>
+              {complaint.status === 'assigned' && <button className="btn btn-primary" onClick={() => fastUpdateStatus('under_review')} disabled={actionLoading}>Start Review &rarr;</button>}
+              {complaint.status === 'under_review' && <button className="btn btn-primary" onClick={() => fastUpdateStatus('in_progress')} disabled={actionLoading}>Begin Work &rarr;</button>}
+              {complaint.status === 'in_progress' && <button className="btn btn-success" onClick={() => fastUpdateStatus('pending_verification')} disabled={actionLoading}>Request Citizen Verification ✅</button>}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   const PRIORITY_STYLES = { critical: { bg: '#fef2f2', color: '#991b1b' }, high: { bg: '#fff7ed', color: '#c2410c' }, medium: { bg: '#fffbeb', color: '#92400e' }, low: { bg: '#f0fdf4', color: '#166534' } };
   const ps = PRIORITY_STYLES[complaint.priority] || { bg: '#f8fafc', color: 'var(--text)' };
@@ -172,15 +258,15 @@ export default function ComplaintDetail() {
               {canAssign && complaint.status !== 'resolved' && (
                 <button className="btn btn-primary btn-sm" onClick={() => setShowAssign(true)}><User size={14} /> {complaint.assignedTo ? 'Reassign' : 'Assign Officer'}</button>
               )}
-              {canUpdateStatus && !['resolved', 'rejected', 'pending_verification'].includes(complaint.status) && availableStatuses.length > 0 && (
-                <button className="btn btn-outline btn-sm" onClick={() => setShowStatus(true)}>Update Status</button>
-              )}
               {canVerify && <button className="btn btn-success btn-sm" onClick={() => setShowVerify(true)}><CheckCircle size={14} /> Verify Resolution</button>}
               <button className="btn btn-outline btn-sm" onClick={handleShare}><Share2 size={14} /> Share Tracking Link</button>
             </div>
           </div>
         </div>
       </div>
+
+      {renderStepper()}
+
 
       {canVerify && (
         <div className="alert alert-warning" style={{ marginBottom: 20 }}>
@@ -327,37 +413,6 @@ export default function ComplaintDetail() {
         </div>
       )}
 
-      {showStatus && (
-        <div className="modal-overlay" onClick={() => setShowStatus(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header"><div className="modal-title">Update Status</div><button className="btn btn-icon" onClick={() => setShowStatus(false)}>✕</button></div>
-            <div className="modal-body">
-              <div className="form-group">
-                <label className="form-label">New Status</label>
-                <select className="form-control" value={newStatus} onChange={(e) => setNewStatus(e.target.value)}>
-                  <option value="">Select status...</option>
-                  {availableStatuses.includes('under_review') && <option value="under_review">Under Review</option>}
-                  {availableStatuses.includes('in_progress') && <option value="in_progress">In Progress</option>}
-                  {availableStatuses.includes('pending_verification') && <option value="pending_verification">Send for Citizen Verification ✅</option>}
-                  {availableStatuses.includes('escalated') && <option value="escalated">Escalate</option>}
-                  {availableStatuses.includes('rejected') && <option value="rejected">Reject</option>}
-                </select>
-              </div>
-              {newStatus === 'pending_verification' && (
-                <div className="alert alert-info" style={{ marginBottom: 12 }}>ℹ️ This will send a verification request to the citizen. They must confirm the issue is resolved.</div>
-              )}
-              <div className="form-group">
-                <label className="form-label">Update Note</label>
-                <textarea className="form-control" rows={3} value={statusNote} onChange={(e) => setStatusNote(e.target.value)} placeholder="Describe what action was taken..." />
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button className="btn btn-outline" onClick={() => setShowStatus(false)}>Cancel</button>
-              <button className="btn btn-primary" onClick={handleStatusUpdate} disabled={actionLoading}>{actionLoading ? 'Updating...' : 'Update'}</button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {showVerify && (
         <div className="modal-overlay" onClick={resetVerifyModal}>

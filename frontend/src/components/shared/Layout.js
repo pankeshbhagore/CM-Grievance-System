@@ -5,6 +5,7 @@ import { useSocket } from '../../contexts/SocketContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { getNotifications, markNotificationRead, markAllNotificationsRead } from '../../services/api';
 import { formatDistanceToNow } from 'date-fns';
+import { useTranslation } from 'react-i18next';
 import {
   LayoutDashboard, FileText, MapPin, Users, Building2,
   ClipboardList, ShieldAlert, LogOut, Menu, Bell,
@@ -127,6 +128,13 @@ export default function Layout() {
   const { criticalAlerts } = useSocket();
   const { toggleTheme, isDark } = useTheme();
   const navigate = useNavigate();
+  const { t, i18n } = useTranslation();
+
+  const toggleLanguage = () => {
+    const newLang = i18n.language === 'en' ? 'hi' : 'en';
+    i18n.changeLanguage(newLang);
+    localStorage.setItem('language', newLang);
+  };
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const isMac = typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform || navigator.userAgent);
 
@@ -146,32 +154,48 @@ export default function Layout() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ width: 36, height: 36, background: 'linear-gradient(135deg, #ff6b35, #ffaa00)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>🏛️</div>
             <div>
-              <div className="sidebar-logo-title">CM Grievance</div>
-              <div className="sidebar-logo-sub">Delhi Government</div>
+              <div className="sidebar-logo-title">{t('app_title') || 'CM Grievance'}</div>
+              <div className="sidebar-logo-sub">{t('subtitle') || 'Delhi Government'}</div>
             </div>
           </div>
         </div>
 
         <div style={{ flex: 1, padding: '8px 0' }}>
           <div className="sidebar-section">Navigation</div>
-          {navItems.map(({ to, label, icon: Icon }) => (
-            <NavLink key={to} to={to} className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`} onClick={() => setSidebarOpen(false)}>
-              <Icon size={16} /> {label}
-            </NavLink>
-          ))}
+          {navItems.map((link) => {
+            const Icon = link.icon;
+            let labelKey = link.label;
+            if (link.label === 'CM Dashboard') labelKey = t('nav_dashboard');
+            else if (link.label === 'All Complaints') labelKey = t('nav_all');
+            else if (link.label === 'Grievance Map') labelKey = t('nav_map');
+            else if (link.label === 'Officers') labelKey = t('nav_officers');
+            else if (link.label === 'Visit Logs') labelKey = t('nav_visits');
+            else if (link.label === 'Audit & Integrity') labelKey = t('nav_audit');
+            else if (link.label === 'My Profile') labelKey = t('nav_profile');
+
+            return (
+              <NavLink key={link.to} to={link.to} className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`} onClick={() => setSidebarOpen(false)}>
+                <Icon size={16} /> {labelKey || link.label}
+              </NavLink>
+            );
+          })}
           <div className="sidebar-section" style={{ marginTop: 12 }}>Account</div>
           <NavLink to="/profile" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`} onClick={() => setSidebarOpen(false)}>
-            <UserIcon size={16} /> My Profile
+            <UserIcon size={16} /> {t('nav_profile') || 'My Profile'}
           </NavLink>
         </div>
 
         <div style={{ padding: '12px 8px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+          <button onClick={toggleLanguage} className="sidebar-link" style={{ width: '100%', marginBottom: 8, background: 'transparent', border: 'none', textAlign: 'left', cursor: 'pointer' }}>
+            <span style={{ fontSize: 18, marginRight: 12 }}>🌐</span>
+            <span>{i18n.language === 'en' ? 'हिन्दी' : 'English'}</span>
+          </button>
           <div style={{ padding: '10px 16px', marginBottom: 4 }}>
             <div style={{ fontSize: 13, fontWeight: 600, color: 'white' }}>{user?.name}</div>
             <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', textTransform: 'capitalize' }}>{user?.role?.replace('_', ' ')}</div>
           </div>
           <button onClick={handleLogout} className="sidebar-link" style={{ width: '100%', border: 'none', cursor: 'pointer', background: 'none', color: 'rgba(255,255,255,0.7)' }}>
-            <LogOut size={16} /> Logout
+            <LogOut size={16} /> {t('nav_logout') || 'Logout'}
           </button>
         </div>
       </aside>

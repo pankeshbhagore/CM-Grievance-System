@@ -6,6 +6,7 @@ import { SocketProvider } from './contexts/SocketContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import ErrorBoundary from './components/shared/ErrorBoundary';
 import './index.css';
+import './i18n';
 
 import Layout from './components/shared/Layout';
 
