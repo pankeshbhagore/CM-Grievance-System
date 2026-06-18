@@ -1,166 +1,156 @@
+<div align="center">
+  <img src="https://img.shields.io/badge/React-18.2.0-blue?style=for-the-badge&logo=react" />
+  <img src="https://img.shields.io/badge/Node.js-22.0.0-green?style=for-the-badge&logo=node.js" />
+  <img src="https://img.shields.io/badge/MongoDB-Mongoose-47A248?style=for-the-badge&logo=mongodb" />
+  <img src="https://img.shields.io/badge/Redis-Caching-DC382D?style=for-the-badge&logo=redis" />
+  <img src="https://img.shields.io/badge/OpenAI-GPT_4o_mini-white?style=for-the-badge&logo=openai" />
+  <img src="https://img.shields.io/badge/Twilio-WhatsApp_Bot-F22F46?style=for-the-badge&logo=twilio" />
+</div>
+
+<br />
+
 # 🏛️ CM Grievance Intelligence Dashboard
+**Next-Generation Delhi Government Grievance Management System**
 
-### Delhi Government — Chief Minister Grievance Management System
-
-A production-grade MERN stack platform for intelligent grievance management, false-closure prevention, and real-time governance analytics. Designed for high availability, security, and smart automation.
-
----
-
-## ✨ System Highlights & Architecture
-
-### 🤖 Advanced AI & ML Services (New!)
-The platform leverages intelligent algorithms to reduce manual triage and ensure citizen satisfaction:
-*   **Weighted AI Classification**: Uses TF-IDF-inspired weighted scoring and bigram phrase matching for superior categorization and automatic routing to departments.
-*   **Jaccard Similarity Deduplication**: Proactively detects duplicate complaints by calculating Jaccard similarity coefficients, filtering stop words, and comparing geographic proximities.
-*   **Sentiment & Urgency Analytics**: Analyzes citizen descriptions to tag frustration levels, escalating highly frustrated complaints and dynamically estimating resolution times based on historical department data.
-*   **Anomaly & Behavior Detection**: Background services continually evaluate officer performance to identify suspiciously fast resolutions (false-closure risks) and department-wide bottlenecks.
-
-### 🔐 Security & Anti-False Closure System
-*   **Rigorous Verification Flow**: When an officer marks a ticket resolved, it enters a `pending_verification` state. Citizens must confirm resolution. Rejections auto-escalate and flag an audit log entry.
-*   **Hardened Backend**: Protected against Mass Assignment vulnerabilities, ReDoS (Regular Expression Denial of Service) in text searches, and strict authorization enforcement for department heads.
-*   **Data Integrity**: Enforced by rigorous `express-validator` schemas across all state transitions and API endpoints.
-
-### 🌗 True Dual Theme System
-A robust `ThemeContext` drives every color via CSS variables under `[data-theme]` selectors. Badges, alerts, tables, forms, dropdowns, and modals have dedicated dark-mode palettes (not just dimmed overlays). Persisted to `localStorage` with smooth 0.25s transitions.
-
-### 🗺️ 4-Theme Interactive Geo-Spatial Map
-The Grievance Map supports four distinct free, keyless tile providers (Streets, Dark, Satellite, Terrain), switchable live without losing markers. Includes "Locate Me" functionality for finding complaints within a 1km radius and pulse animations for critical alerts.
-
-### 📊 Comprehensive CM Analytics & Leaderboards
-*   **Real-time AI Insights Panel**: Displays department bottlenecks and officer behavior warnings directly to the Chief Minister.
-*   **Date-Range Analytics**: Supports Today / 7 Days / 30 Days / 90 Days / All Time queries that dynamically reshape category breakdowns, department performance, and trend charts.
-*   **Officer Leaderboard**: Top performers are highlighted based on resolved-complaint counts, alongside capacity tracking to prevent over-assignment and division-by-zero workload errors.
-
-### 💬 Discussion Threads & Internal Notes
-Every complaint has a dedicated discussion thread. Citizens and staff can post public comments; staff have an "Internal note" toggle for secure, officer-to-officer coordination that is mathematically isolated from public API responses.
-
-### 🔗 Public Ticket Tracking (No Login Required)
-A dedicated `/track/:ticketId` portal allows anyone to check status without an account. Rate-limited and sanitized to protect citizen PII and internal staff notes.
-
-### 📥 Enterprise UX Enhancements
-*   **Command Palette (⌘K / Ctrl+K)**: Role-aware quick navigation and fuzzy-search.
-*   **CSV Exports**: One-click, unpaginated export of filtered complaint lists to properly RFC-4180-escaped CSV files.
-*   **Debounced Search**: Optimized API performance with debounced inputs.
-*   **Memory Safe**: React hooks rigorously clean up `URL.createObjectURL` references for heavy photo-evidence uploads.
-*   **Skeleton Loading States**: Content-shaped placeholders maintain page structure during data fetches.
+A production-grade, highly-advanced MERN stack platform designed for intelligent grievance management, false-closure prevention, and real-time governance analytics. Designed for high availability, enterprise security, and smart automation to revolutionize how citizens interact with their local government.
 
 ---
 
-## 👥 Roles & Access Levels
+## 🌟 Executive Summary
+Traditional grievance platforms rely on manual categorization, leading to bottlenecks, misassigned tickets, and unverified contractor resolutions (false closures). 
 
-| Role | Access |
-|------|--------|
-| **Citizen** | Submit, track, verify resolutions, upvote, comment, manage profile, share tracking link |
-| **Employee** | View assigned tasks, update status, upload proof, comment (incl. internal notes) |
-| **Department Head** | Assign officers within their department, view dept analytics |
-| **CM** | Full dashboard, heat map, officer performance, visit logs, audit, AI anomalies |
-| **Super Admin** | Everything + user management + department management |
-
----
-
-## 🏗️ Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Frontend | React 18, React Router v6, Pure CSS Custom Variables (Light/Dark theming) |
-| Charts | Recharts |
-| Maps | Leaflet + 4 tile providers (OSM, CartoDB, Esri, OpenTopoMap) |
-| Real-time | Socket.IO with authenticated per-user & per-role rooms |
-| Backend | Node.js + Express.js |
-| Database | MongoDB + Mongoose |
-| Auth & Security| JWT, bcrypt, express-validator, Rate Limiting, ReDoS protection |
-| File Upload | Multer (MIME + extension restricted to JPG/PNG/WEBP) |
-| AI / Jobs | node-cron (Anomaly detection, overdue sweeps), Custom NLP |
+**This platform solves these issues via AI-driven automation and strict accountability protocols:**
+1. **Citizens** submit complaints via a web portal or **WhatsApp Bot**.
+2. **AI Models** instantly categorize the complaint, assess its priority, extract sentiment, and estimate the resolution time.
+3. **Smart Load Balancers** assign the ticket to the fastest, most qualified field officer who isn't overloaded.
+4. **Field Officers** resolve issues but are blocked by **Perceptual Image Hashing** if they upload fake/duplicate photos, and flagged by **Haversine Geo-Fencing** if they resolve tickets away from the site.
+5. **The Chief Minister** gains a holistic view via interactive **Leaflet GIS Maps**, WebSocket alerts, and **OpenAI-generated Press Releases**.
 
 ---
 
-## 🚀 Quick Start
+## ✨ Comprehensive Feature Matrix
 
-### Prerequisites
-Node.js 18+, MongoDB 6+ (local or Atlas)
+### 🤖 1. Advanced AI & Machine Learning Integrations
+*   **Intelligent Auto-Classification:** Eliminates manual triage. Uses a TF-IDF-inspired algorithm, bigram matching, and Regex boundary detection to classify text into 15+ civic categories.
+*   **Skill-Based Auto-Assignment:** Assigns tickets to the specific field officer with the fastest historical resolution speed for that specific category, without exceeding their `bandwidth` capacity.
+*   **Jaccard Similarity Deduplication:** Proactively blocks spam by detecting duplicate complaints using Jaccard similarity coefficients and geographic proximity.
+*   **Predictive Maintenance (CRON):** Background service clusters complaints by geospatial boundaries. If an anomaly is detected (e.g., 5 sewage leaks in Ward A), it triggers a preemptive infrastructure alert via WebSockets.
+*   **Automated Press Release Generator (OpenAI):** The CM dashboard connects directly to the `gpt-4o-mini` API to instantly compile weekly resolved tickets into professional, publishable Markdown press releases.
+*   **Sentiment & Frustration Analytics:** Analyzes phrasing, exclamation density, and negative keywords to attach a "frustration index" to complaints.
 
-### Backend
-```bash
-cd backend
-cp .env.example .env   # Edit MONGO_URI and JWT_SECRET
-npm install
-npm run seed           # Seeds departments, users, and 40 mock complaints
-npm run dev            # Runs on http://localhost:5000
+### 🔐 2. Contractor Accountability & Anti-Fraud Engines
+*   **Geo-Fence SLA Tracking (Haversine Formula):** Forces officers to be physically present to close a ticket. If an officer's GPS coordinates are > 300 meters away from the reported incident, an Audit Log is generated and the CM is alerted.
+*   **Image Fraud Detection (Jimp Perceptual Hashing):** Extracts 64-bit perceptual hashes from uploaded resolution photos. It calculates the Hamming Distance against thousands of historical photos to catch contractors uploading previously used photos to falsely claim a resolution.
+*   **Citizen Verification Loop:** Officers cannot truly "close" a ticket. They can only mark it `pending_verification`. The citizen receives an alert to confirm or reject the resolution. Rejections auto-escalate the ticket to Department Heads.
+
+### 🌐 3. Multi-Channel & External API Integrations
+*   **Twilio WhatsApp Webhook:** Citizens can register grievances seamlessly by sending a simple WhatsApp message! The backend automatically captures the TwiML payload, creates a user account on-the-fly, and replies with a tracking ID.
+*   **MCD311 Microservice Sync:** Runs asynchronously to sync localized municipal tickets to the central MCD311 legacy APIs, ensuring data parity between state and municipal governments.
+*   **Redis Data Caching:** Heavy analytical queries (dashboard stats, historical trends) are cached in Redis to guarantee ultra-fast UI rendering under high traffic.
+
+### 🗺️ 4. Geospatial UI & Data Visualization
+*   **Interactive Anger Heatmaps (Leaflet.js):** Dynamic GIS map plotting every grievance across Delhi. Highly frustrated complaints actively pulsate in red to demand immediate intervention.
+*   **Real-time WebSocket UI:** Built with Socket.IO to push live notifications to the UI for Overdue Tickets, New Assignments, Verification Requests, and Predictive Maintenance Alerts.
+*   **Role-Based Access Control (RBAC):** UI adapts seamlessly based on the logged-in user (Citizen, Employee, Department Head, Super Admin, Chief Minister).
+
+---
+
+## 🏗️ System Architecture
+
+```mermaid
+graph TD
+    A[Citizen] -->|Web Portal| B(React Frontend)
+    A -->|WhatsApp| C(Twilio Webhook)
+    
+    B -->|REST API / JWT| D{Express API Gateway}
+    C -->|TwiML| D
+    
+    D --> E[AI Classification Engine]
+    D --> F[Image Fraud Detection Jimp]
+    
+    E --> G[(MongoDB)]
+    F --> G
+    
+    D -.->|Analytics| H[(Redis Cache)]
+    
+    I[Node-Cron Service] -->|Predictive Maint.| G
+    I -->|WebSocket Alerts| B
+    
+    J[OpenAI API] <-->|Press Release Gen| D
+    K[MCD311 Gov API] <-->|Async Sync| D
 ```
 
-### Frontend
+---
+
+## 🚀 Installation & Local Setup
+
+### 1. Prerequisites
+*   Node.js (v18+)
+*   MongoDB (v6+) running locally or via MongoDB Atlas
+*   Redis (Optional, defaults to local memory if disabled)
+
+### 2. Backend Setup
+```bash
+cd backend
+npm install
+cp .env.example .env
+```
+Edit your `.env` to include your secure keys:
+```env
+PORT=5000
+MONGO_URI=mongodb://localhost:27017/cm_grievance
+JWT_SECRET=cm_grievance_ultra_secret_key_delhi_2026_change_in_production
+JWT_EXPIRE=7d
+CLIENT_URL=http://localhost:3000
+
+# Advanced Integrations
+REDIS_URL=redis://localhost:6379
+OPENAI_API_KEY=your_openai_api_key_here
+TWILIO_ACCOUNT_SID=your_twilio_account_sid_here
+TWILIO_AUTH_TOKEN=your_twilio_auth_token_here
+TWILIO_PHONE_NUMBER=your_twilio_whatsapp_number_here
+```
+
+### 3. Database Seeding
+To populate the application with realistic simulated data (departments, CM account, admin, officers, and mock complaints):
+```bash
+npm run seed
+```
+
+### 4. Run the Servers
+**Terminal 1 (Backend):**
+```bash
+cd backend
+npm run dev
+```
+
+**Terminal 2 (Frontend):**
 ```bash
 cd frontend
 npm install
-npm start              # Runs on http://localhost:3000
+npm start
 ```
 
 ---
 
-## 🔑 Demo Credentials (Password: `password123`)
+## 🧪 Default Test Credentials
+Use the following credentials after seeding the database to test the various Role-Based Access Views:
 
-| Role | Email |
-|------|-------|
-| CM | cm@delhi.gov.in |
-| Super Admin | admin@delhi.gov.in |
-| Dept Head (Roads) | dh.roads@delhi.gov.in |
-| Officer | officer1@delhi.gov.in |
-| Citizen | citizen1@example.com |
-
-*Tip: After seeding the database, navigate to `/track/GRV-2026-000001` (no login required) to preview the public tracking portal.*
+| Role | Email | Password | Access Highlights |
+| :--- | :--- | :--- | :--- |
+| **Chief Minister** | `cm@delhi.gov.in` | `password123` | View AI Press Releases, Global Heatmaps, Fraud Alerts |
+| **Dept Head** | `dh.roads@delhi.gov.in` | `password123` | Dept Analytics, Officer Load Balancing, Escalations |
+| **Field Officer** | `officer1@delhi.gov.in` | `password123` | Resolve tickets, trigger Geo-Fence & Jimp Hash checks |
+| **Citizen** | `citizen1@gmail.com` | `password123` | Submit via portal, track status, verify resolutions |
 
 ---
 
-## 📡 Core API Reference
-
-### Auth & Users
-*   `POST /api/auth/login`, `POST /api/auth/register`
-*   `GET /api/users/officers`, `GET /api/users/officer-performance`
-*   `POST /api/users` (Admin), `PUT /api/users/:id/toggle-active` (Admin)
-
-### Complaints & AI
-*   `POST /api/complaints`
-*   `GET /api/complaints`, `GET /api/complaints/stats?days=N`
-*   `PUT /api/complaints/:id/status`, `POST /api/complaints/:id/verify`
-*   `GET /api/ai/anomalies` (CM/Admin)
-
-### Comments & Public Tracking
-*   `GET /api/complaints/:id/comments`, `POST /api/complaints/:id/comments` (Supports `isInternal`)
-*   `GET /api/track/:ticketId` (Public, no auth)
-
-### Departments & Visits
-*   `GET /api/departments`
-*   `POST /api/visits`, `PUT /api/visits/:id/complete`
-
-### Notifications & Audit
-*   `GET /api/notifications`, `PUT /api/notifications/:id/read`
-*   `GET /api/audit-logs` (Supports `?suspicious=true`)
-
----
-
-## 📁 Project Structure
-
+## 📡 Testing the WhatsApp Webhook (Local Simulation)
+To simulate a Twilio payload without setting up a sandbox, run the following in **PowerShell**:
+```powershell
+Invoke-RestMethod -Uri http://127.0.0.1:5000/api/webhook/whatsapp -Method POST -Body "From=whatsapp:+1234567890&Body=There is a huge pothole on MG Road causing massive traffic jams." -ContentType "application/x-www-form-urlencoded"
 ```
-cm-grievance/
-├── backend/
-│   ├── config/          # DB config
-│   ├── controllers/     # Auth, Complaint, User, Visit, Notification, Comment
-│   ├── middleware/      # Auth, ErrorHandler, Upload, Validators
-│   ├── models/          # User, Department, Complaint, CMVisit, AuditLog, etc.
-│   ├── routes/          # Express Routers
-│   ├── services/        # aiClassification, anomalyDetection, mcd311, notification
-│   ├── utils/           # Seeder
-│   └── server.js        # Entry point
-└── frontend/
-    └── src/
-        ├── components/  # Layout, CommandPalette, CommentsThread, Skeletons
-        ├── contexts/    # Auth, Socket, Theme
-        ├── hooks/       # useLeaflet
-        ├── pages/       # Dashboards, Maps, Submission, Tracking
-        ├── services/    # api.js
-        └── utils/       # helpers.js
-```
+Check your terminal or frontend dashboard to watch the AI automatically route and assign the complaint!
 
 ---
-
-*Built for India Innovates 2026 | Delhi CM Grievance Initiative*
+*Developed for the Government of Delhi Grievance Resolution Initiative.*
